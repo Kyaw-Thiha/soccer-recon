@@ -2,17 +2,25 @@
 3D Reconstruction of soccer matches from multiview camera using `Gaussian Splatting`.
 
 ## Installation
-
+Clone the repository.
 ```bash
-# Clone the repository
 git clone https://github.com/Kyaw-Thiha/soccer-recon.git
 cd soccer-recon
+```
 
-# Install the package
+Create the virtual environment.
+```bash
+conda create -n soccer-recon python=3.12 -y
+```
+
+Activate the virtual environment.
+```bash
+conda activate soccer-recon
+```
+
+Install the package.
+```bash
 pip install -e .
-
-# With dev dependencies (pytest)
-pip install -e ".[dev]"
 ```
 
 ## Project Structure
@@ -76,4 +84,9 @@ soccer-recon/
 - W & B
 - Hydra configs
 
+## Datasets
+Download the datasets from `SoccerNet-v3D`.
+Then, download the actual videos from `SoccerNet-v3`.
 
+- [SoccerNet-v3D](https://github.com/mguti97/SoccerNet-v3D)
+- [SoccerNet-v3](https://github.com/SoccerNet/SoccerNet-v3)
