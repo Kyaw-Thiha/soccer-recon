@@ -91,7 +91,7 @@ class SoccerDataParser(DataParser):
         if not match_dir.exists():
             raise ValueError(f"Match directory not found: {match_dir}")
 
-        # Load labels
+        # Load labels (prefer v3D for calibration)
         labels_file = "Labels-v3D.json" if self.config.use_v3d else "Labels-v3.json"
         labels_path = match_dir / labels_file
 
@@ -105,6 +105,11 @@ class SoccerDataParser(DataParser):
             raise ValueError(f"Labels file not found: {labels_path}")
 
         labels = load_from_json(labels_path)
+
+        # Find frames directory (may be in v3 folder if using v3D labels)
+        frames_dir = self._find_frames_directory(match_dir)
+        if frames_dir is None:
+            raise ValueError(f"Could not find frames for match: {match_dir}")
 
         # Get action frames
         action_id = self.config.action_id or labels["GameMetadata"]["list_actions"][0]
@@ -146,11 +151,11 @@ class SoccerDataParser(DataParser):
 
             cameras_list.append(camera)
 
-            # Store image path
-            image_path = match_dir / "frames" / f"{frame_name}.png"
+            # Store image path (use frames_dir which may be in v3 folder)
+            image_path = frames_dir / "frames" / f"{frame_name}.png"
             if not image_path.exists():
                 # Try in zip file
-                image_path = match_dir / "Frames-v3.zip"
+                image_path = frames_dir / "Frames-v3.zip"
 
             image_filenames.append(image_path)
 
@@ -181,8 +186,10 @@ class SoccerDataParser(DataParser):
             dataparser_scale=self.config.scale_factor,
             metadata={
                 "match_path": str(match_dir),
+                "frames_path": str(frames_dir),
                 "action_id": action_id,
                 "num_views": len(frame_names),
+                "has_calibration": self.config.use_v3d and "calibration" in labels["actions"].get(action_id, {}),
                 "labels": labels,
             },
         )
@@ -196,6 +203,45 @@ class SoccerDataParser(DataParser):
             raise ValueError(f"No SoccerNet matches found in {self.config.data}")
 
         return labels_files[0].parent
+
+    def _find_frames_directory(self, match_dir: Path) -> Optional[Path]:
+        """Find frames for a match, checking multiple locations.
+
+        Args:
+            match_dir: Match directory (may be in v3D folder)
+
+        Returns:
+            Path where frames exist, or None if not found
+        """
+        # Check if frames exist in current directory
+        frames_zip = match_dir / "Frames-v3.zip"
+        frames_extracted = match_dir / "frames"
+
+        if frames_zip.exists() or frames_extracted.exists():
+            return match_dir
+
+        # If using v3D data, check corresponding v3 folder
+        # Convert path like: data/SoccerNet-v3D/league/season/match
+        # To: data/SoccerNet/league/season/match
+        match_dir_str = str(match_dir)
+
+        # Try multiple common naming patterns
+        v3_patterns = [
+            match_dir_str.replace("SoccerNet-v3D", "SoccerNet"),
+            match_dir_str.replace("v3D", ""),
+        ]
+
+        for v3_path_str in v3_patterns:
+            v3_path = Path(v3_path_str)
+            if v3_path.exists():
+                v3_frames_zip = v3_path / "Frames-v3.zip"
+                v3_frames_extracted = v3_path / "frames"
+
+                if v3_frames_zip.exists() or v3_frames_extracted.exists():
+                    print(f"Found frames in v3 folder: {v3_path}")
+                    return v3_path
+
+        return None
 
     def _parse_v3d_calibration(
         self, calibration: dict, width: int, height: int
