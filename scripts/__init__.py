@@ -1,0 +1,3 @@
+"""
+Soccer reconstruction training scripts.
+"""

@@ -21,10 +21,12 @@ dev = [
     "pytest>=7.0.0",
 ]
 
+[project.scripts]
+soccer-train = "scripts.train:entrypoint"
+
 # Nerfstudio plugin registration
-# Uncomment and modify when your method config is ready:
-# [project.entry-points."nerfstudio.method_configs"]
-# soccer-recon = "soccer_recon.methods.base_gs_method:SoccerGSConfig"
+[project.entry-points."nerfstudio.method_configs"]
+soccer-gs = "soccer_recon.methods.base_gs_method:SoccerGSConfig"
 
 [tool.hatch.build.targets.wheel]
 packages = ["soccer_recon"]
