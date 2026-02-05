@@ -38,7 +38,7 @@ def main(
     steps_per_save: int = 2000,
     steps_per_eval_image: int = 500,
     steps_per_eval_all_images: int = 5000,
-    viewer_enabled: bool = True,
+    vis: str = "viewer",
     load_checkpoint: Optional[Path] = None,
 ) -> None:
     """Train a Soccer 3D Gaussian Splatting model.
@@ -53,7 +53,8 @@ def main(
         steps_per_save: Save checkpoint every N steps
         steps_per_eval_image: Evaluate single image every N steps
         steps_per_eval_all_images: Evaluate all images every N steps
-        viewer_enabled: Enable web viewer
+        vis: Visualization method: 'viewer', 'wandb', 'tensorboard', 'comet',
+            'viewer+wandb', 'viewer+tensorboard', 'viewer+comet'
         load_checkpoint: Path to checkpoint to resume from
     """
 
@@ -91,7 +92,7 @@ def main(
     # Build viewer config
     viewer_config = ViewerConfig(
         num_rays_per_chunk=1 << 15,
-        quit_on_train_completion=not viewer_enabled,
+        quit_on_train_completion="viewer" not in vis,
     )
 
     # Build pipeline config
@@ -112,7 +113,7 @@ def main(
         mixed_precision=True,
         pipeline=pipeline_config,
         viewer=viewer_config,
-        vis="viewer" if viewer_enabled else "wandb",
+        vis=vis,
         load_config=load_checkpoint,
         relative_model_dir=Path("nerfstudio_models"),
         load_dir=load_checkpoint.parent if load_checkpoint else None,
@@ -180,7 +181,7 @@ def main(
     print(f"Action ID: {action_id or 'Auto-detect first action'}")
     print(f"Output: {output_dir / experiment_name}")
     print(f"Max iterations: {max_num_iterations:,}")
-    print(f"Viewer: {'Enabled' if viewer_enabled else 'Disabled'}")
+    print(f"Visualization: {vis}")
     print("=" * 80 + "\n")
 
     # Launch training
