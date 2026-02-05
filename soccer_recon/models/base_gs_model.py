@@ -100,10 +100,65 @@ class SoccerGSModel(SplatfactoModel):
         """
         metrics = super().get_metrics_dict(outputs, batch)
 
-        # Add soccer-specific metrics here
-        # e.g., field line accuracy, player reconstruction quality, etc.
+        # Compute image quality metrics during eval or periodically during training
+        if not self.training or self._should_compute_metrics():
+            # Lazy initialization of metrics
+            if not hasattr(self, '_metrics'):
+                from soccer_recon.metrics import MetricsComputer
+                self._metrics = MetricsComputer(device=self.device)
+                self._step_counter = 0
+
+            self._step_counter += 1
+
+            # Get images in correct format [B, C, H, W]
+            pred_rgb = outputs["rgb"]
+            gt_rgb = batch["image"]
+            pred_rgb = self._prepare_for_metrics(pred_rgb, batch)
+            gt_rgb = self._prepare_for_metrics(gt_rgb, batch)
+
+            # Compute metrics
+            with torch.no_grad():
+                metrics["psnr"] = self._metrics.psnr.compute(pred_rgb, gt_rgb)
+                metrics["ssim"] = self._metrics.ssim.compute(pred_rgb, gt_rgb)
+
+                # LPIPS is expensive - compute less frequently
+                if self._step_counter % 2 == 0:
+                    metrics["lpips"] = self._metrics.lpips.compute(pred_rgb, gt_rgb)
 
         return metrics
+
+    def _should_compute_metrics(self) -> bool:
+        """Compute metrics every 500 steps during training."""
+        return self.step % 500 == 0
+
+    def _prepare_for_metrics(self, image: torch.Tensor, batch) -> torch.Tensor:
+        """Reshape image to [B, C, H, W] format for metrics.
+
+        Args:
+            image: Image tensor in various formats
+            batch: Batch containing metadata
+
+        Returns:
+            Image tensor in [B, C, H, W] format
+        """
+        # Handle different image formats from Nerfstudio
+        if image.ndim == 2:  # [H*W, 3]
+            # Get image dimensions from batch
+            h = batch.get("height", None)
+            w = batch.get("width", None)
+            if h is None or w is None:
+                # Try to infer from image shape
+                num_pixels = image.shape[0]
+                h = int(num_pixels ** 0.5)
+                w = num_pixels // h
+            image = image.reshape(h, w, 3)
+
+        if image.ndim == 3:  # [H, W, 3]
+            image = image.permute(2, 0, 1).unsqueeze(0)  # → [1, 3, H, W]
+
+        # Ensure values are in [0, 1]
+        image = image.clamp(0, 1)
+        return image
 
     @staticmethod
     def get_field_scene_box(
