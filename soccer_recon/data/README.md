@@ -2,6 +2,8 @@
 
 This directory contains scripts for downloading and processing SoccerNet-v3 dataset.
 
+**All commands below should be run from the project root directory.**
+
 ## Scripts
 
 ### 1. `download_match.py`
@@ -11,22 +13,27 @@ Downloads frames and labels for a specific SoccerNet match.
 
 **Basic Usage:**
 ```bash
-# Download Leicester vs Chelsea match from train split
-python download_match.py --split train
+# Download Leicester vs Chelsea match from train split (run from project root)
+python soccer_recon/data/download_match.py --split train
 
 # Download from different league/season
-python download_match.py \
+python soccer_recon/data/download_match.py \
     --league spain_laliga \
     --season 2015-2016 \
     --game "2016-04-02 - 17-00 Barcelona 1 - 2 Real Madrid" \
     --split valid
+
+# Specify custom output directory
+python soccer_recon/data/download_match.py \
+    --split train \
+    --output_dir ./data/SoccerNet
 ```
 
 **Arguments:**
-- `--output_dir`: Where to save data (default: `../../data/SoccerNet`)
+- `--output_dir`: Where to save data (default: `./data/SoccerNet` from project root)
 - `--league`: League name (default: `england_epl`)
 - `--season`: Season (default: `2016-2017`)
-- `--game`: Match identifier (default: Leicester vs Chelsea)
+- `--game`: Match identifier (default: `2017-01-14 - 20-30 Leicester 0 - 3 Chelsea`)
 - `--split`: Dataset split - **REQUIRED** (`train`/`valid`/`test`)
 - `--files`: Files to download (default: `Labels-v3.json Frames-v3.zip`)
 
@@ -35,14 +42,18 @@ Extracts frames from zip file and visualizes annotations.
 
 **Basic Usage:**
 ```bash
-# Extract and preview frames
-python extract_frames.py "../../data/SoccerNet/england_epl/2016-2017/2017-01-14 - 20-30 Leicester 0 - 3 Chelsea"
+# Extract and preview frames (run from project root)
+python soccer_recon/data/extract_frames.py \
+    "data/SoccerNet/england_epl/2016-2017/2017-01-14 - 20-30 Leicester 0 - 3 Chelsea"
 
 # Just extract
-python extract_frames.py <match_dir> --extract
+python soccer_recon/data/extract_frames.py <match_dir> --extract
 
-# Just preview
-python extract_frames.py <match_dir> --preview --num_samples 10
+# Just preview with more samples
+python soccer_recon/data/extract_frames.py <match_dir> --preview --num_samples 10
+
+# Overwrite existing frames
+python soccer_recon/data/extract_frames.py <match_dir> --overwrite
 ```
 
 **Arguments:**
@@ -55,13 +66,15 @@ python extract_frames.py <match_dir> --preview --num_samples 10
 
 ## Complete Workflow
 
+**Run these commands from the project root directory:**
+
 ```bash
 # Step 1: Download match data (requires specifying the split)
-python download_match.py --split train
+python soccer_recon/data/download_match.py --split train
 
 # Step 2: Extract and visualize
-python extract_frames.py \
-    "../../data/SoccerNet/england_epl/2016-2017/2017-01-14 - 20-30 Leicester 0 - 3 Chelsea" \
+python soccer_recon/data/extract_frames.py \
+    "data/SoccerNet/england_epl/2016-2017/2017-01-14 - 20-30 Leicester 0 - 3 Chelsea" \
     --num_samples 10
 ```
 

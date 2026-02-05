@@ -135,8 +135,8 @@ Examples:
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="../../data/SoccerNet",
-        help="Directory where to save the downloaded data (default: ../../data/SoccerNet)",
+        default="./data/SoccerNet",
+        help="Directory where to save the downloaded data (default: ./data/SoccerNet)",
     )
     parser.add_argument(
         "--league",
