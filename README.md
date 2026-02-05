@@ -18,6 +18,11 @@ Activate the virtual environment.
 conda activate soccer-recon
 ```
 
+Install GPU packages using conda.
+```bash
+conda install -c nvidia cuda-nvcc cuda-toolkit
+```
+
 Install the package.
 ```bash
 pip install -e .

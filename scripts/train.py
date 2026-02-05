@@ -19,11 +19,13 @@ from typing import Optional
 
 from nerfstudio.configs.base_config import LoggingConfig, MachineConfig, ViewerConfig
 from nerfstudio.engine.trainer import TrainerConfig
+from nerfstudio.engine.optimizers import AdamOptimizerConfig
+from nerfstudio.engine.schedulers import ExponentialDecaySchedulerConfig
 from nerfstudio.pipelines.base_pipeline import VanillaPipelineConfig
 
-from soccer_recon.data.datamanager import SoccerDataManagerConfig
 from soccer_recon.data.dataparsers import SoccerDataParserConfig
 from soccer_recon.models.base_gs_model import SoccerGSModelConfig
+from nerfstudio.data.datamanagers.full_images_datamanager import FullImageDatamanagerConfig
 
 
 def main(
@@ -68,11 +70,10 @@ def main(
     )
 
     # Build datamanager config
-    datamanager_config = SoccerDataManagerConfig(
+    datamanager_config = FullImageDatamanagerConfig(
         dataparser=dataparser_config,
-        train_num_rays_per_batch=4096,
-        eval_num_rays_per_batch=4096,
-        camera_optimizer=None,
+        cache_images="cpu",
+        cache_images_type="uint8",
     )
 
     # Build model config
@@ -119,7 +120,56 @@ def main(
         load_checkpoint=load_checkpoint,
         machine=MachineConfig(),
         logging=LoggingConfig(),
+        optimizers={
+            "means": {
+                "optimizer": AdamOptimizerConfig(lr=1.6e-4, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=1.6e-6,
+                    max_steps=max_num_iterations,
+                ),
+            },
+            "features_dc": {
+                "optimizer": AdamOptimizerConfig(lr=0.0025, eps=1e-15),
+                "scheduler": None,
+            },
+            "features_rest": {
+                "optimizer": AdamOptimizerConfig(lr=0.0025 / 20, eps=1e-15),
+                "scheduler": None,
+            },
+            "opacities": {
+                "optimizer": AdamOptimizerConfig(lr=0.05, eps=1e-15),
+                "scheduler": None,
+            },
+            "scales": {
+                "optimizer": AdamOptimizerConfig(lr=0.005, eps=1e-15),
+                "scheduler": None,
+            },
+            "quats": {
+                "optimizer": AdamOptimizerConfig(lr=0.001, eps=1e-15),
+                "scheduler": None,
+            },
+            "camera_opt": {
+                "optimizer": AdamOptimizerConfig(lr=1e-4, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=5e-7,
+                    max_steps=max_num_iterations,
+                    warmup_steps=1000,
+                    lr_pre_warmup=0,
+                ),
+            },
+            "bilateral_grid": {
+                "optimizer": AdamOptimizerConfig(lr=2e-3, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=1e-4,
+                    max_steps=max_num_iterations,
+                    warmup_steps=1000,
+                    lr_pre_warmup=0,
+                ),
+            },
+        },
     )
+    trainer_config.set_timestamp()
+    trainer_config.get_base_dir().mkdir(parents=True, exist_ok=True)
 
     # Print configuration
     print("\n" + "=" * 80)

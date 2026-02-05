@@ -19,6 +19,11 @@ soccer-train \
     --experiment-name leicester-chelsea-action0
 ```
 
+Current Training
+```bash
+python scripts/train.py --data ./data/SoccerNet --match-path "england_epl/2015-2016/2015-08-29 - 17-00 Chelsea 1 - 2 Crystal Palace" --action-id 5.png --experiment-name chelsea-palace-action5 --max-num-iterations 30000 --viewer-enabled
+```
+
 ## Using Nerfstudio CLI
 
 Since the method is registered with Nerfstudio, you can also use the standard `ns-train` command:

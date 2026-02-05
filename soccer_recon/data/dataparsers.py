@@ -7,6 +7,8 @@ Parses SoccerNet-v3D multi-view data into Nerfstudio format.
 from __future__ import annotations
 
 import json
+import shutil
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Optional, Type
@@ -104,7 +106,18 @@ class SoccerDataParser(DataParser):
         if not labels_path.exists():
             raise ValueError(f"Labels file not found: {labels_path}")
 
-        labels = load_from_json(labels_path)
+        # Load labels - handle potential string parsing issues
+        try:
+            labels = load_from_json(labels_path)
+            # Check if loaded as string and needs eval
+            if isinstance(labels, str):
+                import ast
+                labels = ast.literal_eval(labels)
+        except Exception as e:
+            # Try direct json load as fallback
+            import json
+            with open(labels_path, 'r') as f:
+                labels = json.load(f)
 
         # Find frames directory (may be in v3 folder if using v3D labels)
         frames_dir = self._find_frames_directory(match_dir)
@@ -152,10 +165,8 @@ class SoccerDataParser(DataParser):
             cameras_list.append(camera)
 
             # Store image path (use frames_dir which may be in v3 folder)
-            image_path = frames_dir / "frames" / f"{frame_name}.png"
-            if not image_path.exists():
-                # Try in zip file
-                image_path = frames_dir / "Frames-v3.zip"
+            frame_filename = frame_name if frame_name.endswith(".png") else f"{frame_name}.png"
+            image_path = self._resolve_image_path(frames_dir, frame_filename)
 
             image_filenames.append(image_path)
 
@@ -181,7 +192,7 @@ class SoccerDataParser(DataParser):
 
         return DataparserOutputs(
             image_filenames=[image_filenames[i] for i in indices],
-            cameras=cameras[indices],
+            cameras=cameras[(indices,)],
             scene_box=scene_box,
             dataparser_scale=self.config.scale_factor,
             metadata={
@@ -242,6 +253,33 @@ class SoccerDataParser(DataParser):
                     return v3_path
 
         return None
+
+    def _resolve_image_path(self, frames_dir: Path, frame_filename: str) -> Path:
+        """Resolve an image path, extracting from zip if needed."""
+        frames_extracted = frames_dir / "frames"
+        candidate_paths = [
+            frames_extracted / frame_filename,
+            frames_dir / frame_filename,
+        ]
+
+        for candidate in candidate_paths:
+            if candidate.exists():
+                return candidate
+
+        frames_zip = frames_dir / "Frames-v3.zip"
+        if frames_zip.exists() and self.config.load_from_zip:
+            frames_extracted.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(frames_zip) as zf:
+                zip_members = [frame_filename, f"frames/{frame_filename}"]
+                member_name = next((name for name in zip_members if name in zf.namelist()), None)
+                if member_name is None:
+                    raise ValueError(f"Frame not found in zip: {frame_filename}")
+                target_path = frames_extracted / frame_filename
+                with zf.open(member_name) as src, target_path.open("wb") as dst:
+                    shutil.copyfileobj(src, dst)
+                return target_path
+
+        raise ValueError(f"Frame image not found: {frame_filename} in {frames_dir}")
 
     def _parse_v3d_calibration(
         self, calibration: dict, width: int, height: int

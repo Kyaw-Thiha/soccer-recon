@@ -56,7 +56,7 @@ class SoccerGSModel(SplatfactoModel):
         # Override background color for soccer field
         if self.config.use_green_background:
             # Typical grass green in RGB [0-1]
-            self.background_color = torch.tensor([0.2, 0.5, 0.2], device=self.device)
+            self.background_color = torch.tensor([0.2, 0.5, 0.2])
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
